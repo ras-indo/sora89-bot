@@ -106,12 +106,34 @@ async function run() {
       await new Promise(r => setTimeout(r, 10000));
       await page.screenshot({ path: 'screenshot-after-login.png' });
       console.log('[BOT] Title after login:', await page.title());
+      
+      // Try to find and click PP Demo / Pragmatic Play Demo
+      console.log('[BOT] Searching for PP Demo...');
+      await new Promise(r => setTimeout(r, 5000));
+      
+      const demoKeywords = ['demo', 'pragmatic', 'pp', 'slot demo', 'main demo'];
+      const links = await page.$$('a, button, .game-item, .slot-item');
+      
+      for (let i = 0; i < Math.min(links.length, 50); i++) {
+        try {
+          const text = await page.evaluate(el => el.innerText.toLowerCase(), links[i]);
+          if (text.includes('demo') || text.includes('pragmatic') || text.includes('pp')) {
+            console.log('[BOT] Found demo link:', text.substring(0, 50));
+            await links[i].click();
+            await new Promise(r => setTimeout(r, 8000));
+            break;
+          }
+        } catch(e) {}
+      }
+      
+      await page.screenshot({ path: 'screenshot-demo.png' });
+      console.log('[BOT] Current URL:', page.url());
     }
     
     console.log('[BOT] Done');
   } catch (e) {
     console.error('[BOT] Error:', e.message);
-    await page.screenshot({ path: 'screenshot-error.png' });
+    try { await page.screenshot({ path: 'screenshot-error.png' }); } catch(ex){}
   } finally {
     await browser.close();
   }
