@@ -1,0 +1,63 @@
+name: Sora89 Bot CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests urllib3 certifi
+
+      - name: Run unit tests (simulation mode)
+        run: |
+          cd sora89-bot
+          SORA89_SIMULATION_MODE=true python -m unittest tests.test_bot tests.test_edge -v
+
+  browser-automation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [test]
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install curl_cffi requests brotli
+
+      - name: Setup Playwright
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Run browser automation (headless)
+        env:
+          SORA89_USERNAME: ${{ secrets.SORA89_USERNAME }}
+          SORA89_PASSWORD: ${{ secrets.SORA89_PASSWORD }}
+        run: |
+          cd sora89-bot
+          python automation/playwright_bot.py || true
