@@ -1,0 +1,59 @@
+name: Sora89 Bot Real
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action'
+        required: true
+        default: 'run-bot'
+        type: choice
+        options:
+          - run-bot
+          - test
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event.inputs.action == 'run-bot' || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 libgbm1 libasound2 libpangocairo-1.0-0 libpango-1.0-0 libcairo2 libatspi2.0-0
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright requests
+
+      - name: Install Playwright browsers
+        run: playwright install chromium
+
+      - name: Run bot on GitHub Actions
+        env:
+          SORA89_USERNAME: ${{ secrets.SORA89_USERNAME }}
+          SORA89_PASSWORD: ${{ secrets.SORA89_PASSWORD }}
+        run: |
+          python automation/gha_bot.py
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bot-logs
+          path: |
+            automation/*.png
+            automation/*.html
+            automation/*.log
+          if-no-files-found: ignore
+          retention-days: 7
