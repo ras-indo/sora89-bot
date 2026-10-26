@@ -27,14 +27,14 @@ async function run() {
 
     console.log('[BOT] Navigating to sora89juli.com...');
     await page.goto('https://sora89juli.com/', { waitUntil: 'networkidle2', timeout: 60000 });
-    
+      
     await new Promise(r => setTimeout(r, 15000));
-    
+      
     const title = await page.title();
     console.log('[BOT] Title:', title);
-    
+      
     await page.screenshot({ path: 'screenshot-1.png' });
-    
+      
     const content = await page.content();
     if (content.includes('Just a moment') || content.includes('cf-challenge')) {
       console.log('[BOT] CF challenge detected, waiting...');
@@ -44,92 +44,121 @@ async function run() {
 
     const user = process.env.SORA89_USER;
     const pass = process.env.SORA89_PASS;
-    
+      
     if (user && pass) {
-      console.log('[BOT] Credentials found, attempting login...');
-      // Try to find login form
+      console.log('[BOT] Logging in...');
       const loginSelectors = [
         'input[type="text"]',
         'input[type="username"]',
         'input[name*="user"]',
-        'input[name*="login"]'
+        'input[name*="login"]',
+        '#username',
+        '#user'
       ];
-      
+        
       for (const sel of loginSelectors) {
         try {
           const el = await page.$(sel);
-          if (el) {
-            await el.type(user, { delay: 50 });
+          if (el && await el.isVisible()) {
+            await el.click({clickCount: 3});
+            await el.type(user, { delay: 80 });
             console.log('[BOT] Username filled');
             break;
           }
         } catch(e) {}
       }
-      
+        
       const passSelectors = [
         'input[type="password"]',
-        'input[name*="pass"]'
+        'input[name*="pass"]',
+        '#password',
+        '#pass'
       ];
-      
+        
       for (const sel of passSelectors) {
         try {
           const el = await page.$(sel);
-          if (el) {
-            await el.type(pass, { delay: 50 });
+          if (el && await el.isVisible()) {
+            await el.click({clickCount: 3});
+            await el.type(pass, { delay: 80 });
             console.log('[BOT] Password filled');
             break;
           }
         } catch(e) {}
       }
-      
-      await page.screenshot({ path: 'screenshot-login-filled.png' });
-      
-      // Try to click login
+        
+      await page.screenshot({ path: 'screenshot-login.png' });
+        
       const btnSelectors = [
         'button[type="submit"]',
         'input[type="submit"]',
         '.login-btn',
-        '.btn-login'
+        '.btn-login',
+        '#login',
+        '.btnSubmit'
       ];
-      
+        
       for (const sel of btnSelectors) {
         try {
           const el = await page.$(sel);
-          if (el) {
+          if (el && await el.isVisible()) {
             await el.click();
-            console.log('[BOT] Login button clicked');
+            console.log('[BOT] Login clicked');
             break;
           }
         } catch(e) {}
       }
-      
-      await new Promise(r => setTimeout(r, 10000));
-      await page.screenshot({ path: 'screenshot-after-login.png' });
-      console.log('[BOT] Title after login:', await page.title());
-      
-      // Try to find and click PP Demo / Pragmatic Play Demo
-      console.log('[BOT] Searching for PP Demo...');
+        
+      await new Promise(r => setTimeout(r, 12000));
+      await page.screenshot({ path: 'screenshot-logged-in.png' });
+      console.log('[BOT] Logged in. Title:', await page.title());
+        
+      // Navigate to play/pragmatic/demo
       await new Promise(r => setTimeout(r, 5000));
-      
-      const demoKeywords = ['demo', 'pragmatic', 'pp', 'slot demo', 'main demo'];
-      const links = await page.$$('a, button, .game-item, .slot-item');
-      
-      for (let i = 0; i < Math.min(links.length, 50); i++) {
+        
+      // Try to find and click PP/Pragmatic game
+      const gameLinks = await page.$$('a, button, .game-item, .slot, [class*="game"]');
+      for (let i = 0; i < gameLinks.length; i++) {
         try {
-          const text = await page.evaluate(el => el.innerText.toLowerCase(), links[i]);
-          if (text.includes('demo') || text.includes('pragmatic') || text.includes('pp')) {
-            console.log('[BOT] Found demo link:', text.substring(0, 50));
-            await links[i].click();
-            await new Promise(r => setTimeout(r, 8000));
+          const text = await page.evaluate(el => {
+            return (el.innerText || el.textContent || '').toLowerCase();
+          }, gameLinks[i]);
+          if ((text.includes('pragmatic') || text.includes('pp')) && (text.includes('demo') || text.length < 80)) {
+            console.log('[BOT] Clicking game:', text.substring(0, 40));
+            await gameLinks[i].click();
+            await new Promise(r => setTimeout(r, 10000));
             break;
           }
         } catch(e) {}
       }
-      
-      await page.screenshot({ path: 'screenshot-demo.png' });
-      console.log('[BOT] Current URL:', page.url());
+        
+      // Also try direct navigation or clicking any slot
+      await page.screenshot({ path: 'screenshot-game.png' });
+        
+      // Try to play - click spin if exists
+      await new Promise(r => setTimeout(r, 8000));
+      const spinBtns = await page.$$('button, div[role="button"]');
+      for (let i = 0; i < spinBtns.length; i++) {
+        try {
+          const text = await page.evaluate(el => {
+            return (el.innerText || el.textContent || el.getAttribute('aria-label') || '').toLowerCase();
+          }, spinBtns[i]);
+          if (text.includes('spin') || text.includes('play') || text.includes('main')) {
+            console.log('[BOT] Clicking play/spin');
+            await spinBtns[i].click();
+            await new Promise(r => setTimeout(r, 3000));
+            await page.screenshot({ path: 'screenshot-spinning.png' });
+            break;
+          }
+        } catch(e) {}
+      }
+        
+      // Stay active for a while to look natural
+      await new Promise(r => setTimeout(r, 30000));
+      await page.screenshot({ path: 'screenshot-final.png' });
+      console.log('[BOT] Session active');
     }
-    
+      
     console.log('[BOT] Done');
   } catch (e) {
     console.error('[BOT] Error:', e.message);
