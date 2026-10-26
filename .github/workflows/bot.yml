@@ -1,0 +1,50 @@
+name: sora89-action-bot
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_mode:
+        description: 'Run mode'
+        required: true
+        default: 'demo'
+        type: choice
+        options:
+          - demo
+          - login-check
+
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install --no-save puppeteer-core chromium
+          npm install --no-save dotenv
+
+      - name: Run bot
+        env:
+          SORA89_USER: ${{ secrets.SORA89_USER }}
+          SORA89_PASS: ${{ secrets.SORA89_PASS }}
+          RUN_MODE: ${{ inputs.run_mode }}
+        run: |
+          node src/index.js
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: |
+            *.png
+            screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 3
