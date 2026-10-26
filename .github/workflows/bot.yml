@@ -2,16 +2,14 @@ name: sora89-action-bot
 
 on:
   workflow_dispatch:
-    inputs:
-      run_mode:
-        description: 'Run mode'
-        required: true
-        default: 'demo'
-        type: choice
-        options:
-          - demo
-          - login-check
+  schedule:
+    - cron: '0 23 * * *'  # 06:00 WIB (UTC+7)
+  push:
+    branches: [ main ]
 
+permissions:
+  actions: write
+  contents: read
 jobs:
   bot:
     runs-on: ubuntu-latest
@@ -34,17 +32,14 @@ jobs:
         env:
           SORA89_USER: ${{ secrets.SORA89_USER }}
           SORA89_PASS: ${{ secrets.SORA89_PASS }}
-          RUN_MODE: ${{ inputs.run_mode }}
+          RUN_MODE: 'demo'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           node src/index.js
 
-      - name: Upload screenshots
+      - name: Cleanup old runs
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: |
-            *.png
-            screenshots/*.png
-          if-no-files-found: ignore
-          retention-days: 3
+        run: |
+          gh run list --repo ${{ github.repository }} --limit 10 --json databaseId -q '.[].databaseId' | while read id; do
+            gh run delete $id --repo ${{ github.repository }} --yes 2>/dev/null || true
+          done
