@@ -27,8 +27,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install --no-save puppeteer-core chromium
-          npm install --no-save dotenv
+          npm install puppeteer-core
+          npm install dotenv
 
       - name: Run bot
         env:
